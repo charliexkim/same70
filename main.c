@@ -27,150 +27,132 @@
  */
 
 //-----------------------------------------------------------------------------
+#include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdbool.h>
 #include <string.h>
+
 #include "same70.h"
-#include "hal_gpio.h"
+#include "bd_systick.h"
+#include "bd_comm.h"
+#include "bd_printf.h"
+#include "bd_hw.h"
+#include "bd_timer.h"
 
+uint32_t debug_v[8];
+uint32_t core_clk_hz ;
+uint32_t peripheral_clk_hz ;
+uint32_t sys_tick = 0;
+uint32_t sys_flag = 0;
+
+uint32_t sys_bg_cnt;
+uint32_t sys_irq_cnt;
+uint32_t tmp_irq_cnt;
+	
 //-----------------------------------------------------------------------------
-#define PERIOD_FAST     100
-#define PERIOD_SLOW     500
 
-HAL_GPIO_PIN(LED,      C, 8)
-HAL_GPIO_PIN(BUTTON,   A, 11)
-HAL_GPIO_PIN(UART_TX,  B, 4)
-HAL_GPIO_PIN(UART_RX,  A, 21)
+const char *id_bd   = "SoC  : *** ATSAME70Q21  ***";
+const char *id_code = "Code : $SAME70, "__DATE__" - "__TIME__;
 
-//-----------------------------------------------------------------------------
-static void timer_set_period(uint16_t i)
+static void sys_init(void);
+
+/* ------------ */
+void identify(void)
+/* ------------ */
 {
-  TC0->TC_CHANNEL[0].TC_RC = 32768ul * i / 1000ul;
-  TC0->TC_CHANNEL[0].TC_CCR = TC_CCR_CLKEN | TC_CCR_SWTRG;
-}
-
-//-----------------------------------------------------------------------------
-void irq_handler_tc0(void)
-{
-  if (TC0->TC_CHANNEL[0].TC_SR & TC_SR_CPCS)
-  {
-    HAL_GPIO_LED_toggle();
-  }
-}
-
-//-----------------------------------------------------------------------------
-static void timer_init(void)
-{
-  PMC->PMC_PCER0 = PMC_PCER0_PID23;
-
-  TC0->TC_CHANNEL[0].TC_CMR = TC_CMR_TCCLKS_TIMER_CLOCK5 | TC_CMR_CPCTRG;
-  timer_set_period(PERIOD_SLOW);
-  TC0->TC_CHANNEL[0].TC_IER = TC_IER_CPCS;
-  TC0->TC_CHANNEL[0].TC_CCR = TC_CCR_CLKEN | TC_CCR_SWTRG;
-
-  NVIC_EnableIRQ(TC0_IRQn);
-}
-
-//-----------------------------------------------------------------------------
-static void uart_init(uint32_t baud)
-{
-  HAL_GPIO_UART_TX_abcd(3);
-  HAL_GPIO_UART_RX_abcd(0);
-
-  PMC->PMC_PCER0 = PMC_PCER0_PID14;
-
-  USART1->US_CR = US_CR_RXEN | US_CR_TXEN;
-  USART1->US_MR = US_MR_USART_MODE_NORMAL | US_MR_CHRL_8_BIT | US_MR_PAR_NO |
-      US_MR_NBSTOP_1_BIT;
-  USART1->US_BRGR = US_BRGR_CD(F_CPU / 16 / baud);
-}
-
-//-----------------------------------------------------------------------------
-static void uart_putc(char c)
-{
-  while (0 == (USART1->US_CSR & US_CSR_TXEMPTY));
-  USART1->US_THR = c;
-}
-
-//-----------------------------------------------------------------------------
-static void uart_puts(char *s)
-{
-  while (*s)
-    uart_putc(*s++);
-}
-
-//-----------------------------------------------------------------------------
-static void sys_init(void)
-{
-  // Disable watchdog
-  WDT->WDT_MR = WDT_MR_WDDIS;
-
-  // Set flash wait states to maximum for 150 MHz operation
-  EFC->EEFC_FMR = EEFC_FMR_FWS(5) | EEFC_FMR_CLOE;
-
-  // Enable 12 MHz Xtal
-  PMC->CKGR_MOR = CKGR_MOR_KEY_PASSWD | CKGR_MOR_MOSCXTST(8) |
-      CKGR_MOR_MOSCRCEN | CKGR_MOR_MOSCXTEN;
-  while (!(PMC->PMC_SR & PMC_SR_MOSCXTS));
-    
-  PMC->CKGR_MOR = CKGR_MOR_KEY_PASSWD | CKGR_MOR_MOSCXTST(8) |
-      CKGR_MOR_MOSCRCEN | CKGR_MOR_MOSCXTEN | CKGR_MOR_MOSCSEL;
-  while (!(PMC->PMC_SR & PMC_SR_MOSCSELS));
-
-  // Setup PLL (12 MHz * 25 = 300 MHz)
-  PMC->CKGR_PLLAR = CKGR_PLLAR_ONE | CKGR_PLLAR_MULA(25-1) |
-      CKGR_PLLAR_PLLACOUNT(0x3f) | CKGR_PLLAR_DIVA(1);
-  while (!(PMC->PMC_SR & PMC_SR_LOCKA));
-
-  // Switch main clock to PLL (two step process)
-  PMC->PMC_MCKR = PMC_MCKR_CSS_MAIN_CLK | PMC_MCKR_MDIV_PCK_DIV2;
-  while (!(PMC->PMC_SR & PMC_SR_MCKRDY));
-
-  PMC->PMC_MCKR = PMC_MCKR_CSS_PLLA_CLK | PMC_MCKR_MDIV_PCK_DIV2;
-  while (!(PMC->PMC_SR & PMC_SR_MCKRDY));
-
-  // Enable PIOA, PIOB, PIOC, PIOD and PIOE
-  PMC->PMC_PCER0 = PMC_PCER0_PID10 | PMC_PCER0_PID11 | PMC_PCER0_PID12 |
-      PMC_PCER0_PID16 | PMC_PCER0_PID17;
-
-  // Disable altenate functions on some pins
-  MATRIX->CCFG_SYSIO |= CCFG_SYSIO_SYSIO4;
+	tprintf("\n-------------------------------\n");
+	tprintf("%s\n", id_bd);
+	tprintf("%s\n", id_code);
+	tprintf("core=300 MHz, peripherals=150 MHz\n");
+	tprintf("-------------------------------\n");
 }
 
 //-----------------------------------------------------------------------------
 int main(void)
 {
-  uint32_t cnt = 0;
-  bool fast = false;
+  	extern void interact(void);
+	extern void TRNG_Enable(void);
+	extern char *prompt;
+	
+	static uint32_t bg_cnt;
+	
+	sys_init();
+	core_clk_hz = 300000000;
+	peripheral_clk_hz = 150000000;
 
-  sys_init();
-  timer_init();
-  uart_init(115200);
+	timer_init();
+	uart_init(115200);
 
-  uart_puts("\r\nHello, world!\r\n");
+	identify();
+	LED_init();
+	GPIO_init();
+	systick_init();
+	TRNG_Enable();
 
-  HAL_GPIO_LED_out();
-  HAL_GPIO_LED_clr();
-
-  HAL_GPIO_BUTTON_in();
-  HAL_GPIO_BUTTON_pullup();
-
+	tprintf("%s", prompt);
+	
   while (1)
   {
-    if (HAL_GPIO_BUTTON_read())
-      cnt = 0;
-    else if (cnt < 5001)
-      cnt++;
-
-    if (5000 == cnt)
-    {
-      fast = !fast;
-      timer_set_period(fast ? PERIOD_FAST : PERIOD_SLOW);
-      uart_putc('.');
-    }
+  	bg_cnt++;
+	if (sys_flag & 0x0001 ) {
+		sys_bg_cnt = bg_cnt;
+		bg_cnt = 0;
+		sys_irq_cnt = tmp_irq_cnt;
+		tmp_irq_cnt = 0;
+		sys_flag &= ~0x0001;
+	}
+	interact();
   }
 
   return 0;
+}
+
+/* -------- */
+// int _exit(void) {}
+void _sbrk(void) {}
+void _close(void) {}
+void _fstat(void) {}
+void _isatty(void) {}
+void _lseek(void) {}
+void _read(void) {}
+/* -------- */
+
+//-----------------------------------------------------------------------------
+static void sys_init(void)
+{
+	// Disable watchdog
+	WDT->WDT_MR = WDT_MR_WDDIS;
+
+	// Set flash wait states to maximum for 150 MHz operation
+	EFC->EEFC_FMR = EEFC_FMR_FWS(5) | EEFC_FMR_CLOE;
+
+	// Enable 12 MHz Xtal
+	PMC->CKGR_MOR = CKGR_MOR_KEY_PASSWD | CKGR_MOR_MOSCXTST(8) |
+		CKGR_MOR_MOSCRCEN | CKGR_MOR_MOSCXTEN;
+	while (!(PMC->PMC_SR & PMC_SR_MOSCXTS));
+
+	PMC->CKGR_MOR = CKGR_MOR_KEY_PASSWD | CKGR_MOR_MOSCXTST(8) |
+		CKGR_MOR_MOSCRCEN | CKGR_MOR_MOSCXTEN | CKGR_MOR_MOSCSEL;
+	while (!(PMC->PMC_SR & PMC_SR_MOSCSELS));
+
+	// Setup PLL (12 MHz * 25 = 300 MHz)
+	PMC->CKGR_PLLAR = CKGR_PLLAR_ONE | CKGR_PLLAR_MULA(25-1) |
+		CKGR_PLLAR_PLLACOUNT(0x3f) | CKGR_PLLAR_DIVA(1);
+	while (!(PMC->PMC_SR & PMC_SR_LOCKA));
+
+	// Switch main clock to PLL (two step process)
+	PMC->PMC_MCKR = PMC_MCKR_CSS_MAIN_CLK | PMC_MCKR_MDIV_PCK_DIV2;
+	while (!(PMC->PMC_SR & PMC_SR_MCKRDY));
+
+	PMC->PMC_MCKR = PMC_MCKR_CSS_PLLA_CLK | PMC_MCKR_MDIV_PCK_DIV2;
+	while (!(PMC->PMC_SR & PMC_SR_MCKRDY));
+
+	// Enable PIOA, PIOB, PIOC, PIOD and PIOE
+	PMC->PMC_PCER0 = PMC_PCER0_PID10 | PMC_PCER0_PID11 | PMC_PCER0_PID12 |
+		PMC_PCER0_PID16 | PMC_PCER0_PID17;
+
+	// Disable altenate functions on some pins
+	MATRIX->CCFG_SYSIO |= CCFG_SYSIO_SYSIO4;
 }
 

@@ -1,0 +1,47 @@
+	PMC->PMC_PCER0 = PMC_PCER0_PID10 | PMC_PCER0_PID11 | PMC_PCER0_PID12 |
+		PMC_PCER0_PID16 | PMC_PCER0_PID17;
+	PMC->PMC_PCER0 = PMC_PCER0_PID23;
+	PMC->PMC_PCER0 = PMC_PCER0_PID14;
+
+============
+
+#include "hal_gpio.h"
+
+HAL_GPIO_PIN(UART_TX,  B, 4)
+HAL_GPIO_PIN(UART_RX,  A, 21)
+
+
+# 1 "x.c"
+# 1 "<command-line>"
+# 1 "/usr/include/stdc-predef.h" 1 3 4
+# 1 "<command-line>" 2
+# 1 "x.c"
+# 1 "hal_gpio.h" 1
+# 2 "x.c" 2
+
+
+static inline void HAL_GPIO_LED_set(void) { PIOC->PIO_SODR = (1 << 8); (void)HAL_GPIO_LED_set; } 
+static inline void HAL_GPIO_LED_clr(void) { PIOC->PIO_CODR = (1 << 8); (void)HAL_GPIO_LED_clr; } 
+static inline void HAL_GPIO_LED_toggle(void) { if (PIOC->PIO_ODSR & (1 << 8)) PIOC->PIO_CODR = (1 << 8); else PIOC->PIO_SODR = (1 << 8); (void)HAL_GPIO_LED_toggle; } 
+static inline void HAL_GPIO_LED_write(int value) { if (value) PIOC->PIO_SODR = (1 << 8); else PIOC->PIO_CODR = (1 << 8); (void)HAL_GPIO_LED_write; } 
+static inline void HAL_GPIO_LED_in(void) { PIOC->PIO_PER = (1 << 8); PIOC->PIO_ODR = (1 << 8); (void)HAL_GPIO_LED_in; } 
+static inline void HAL_GPIO_LED_out(void) { PIOC->PIO_PER = (1 << 8); PIOC->PIO_OER = (1 << 8); (void)HAL_GPIO_LED_out; } 
+static inline void HAL_GPIO_LED_pullup(void) { PIOC->PIO_PUER = (1 << 8); (void)HAL_GPIO_LED_pullup; } 
+static inline int HAL_GPIO_LED_read(void) { return (PIOC->PIO_PDSR & (1 << 8)) != 0; (void)HAL_GPIO_LED_read; } 
+static inline int HAL_GPIO_LED_state(void) { return (PIOC->PIO_ODSR & (1 << 8)) != 0; (void)HAL_GPIO_LED_state; } 
+static inline void HAL_GPIO_LED_abcd(int abcd) { if (abcd & 1) PIOC->PIO_ABCDSR[0] |= (1 << 8); else PIOC->PIO_ABCDSR[0] &= ~(1 << 8); if (abcd & 2) PIOC->PIO_ABCDSR[1] |= (1 << 8); else PIOC->PIO_ABCDSR[1] &= ~(1 << 8); PIOC->PIO_PDR = (1 << 8); (void)HAL_GPIO_LED_abcd; } 
+static inline void HAL_GPIO_LED_mden(void) { PIOC->PIO_MDER = (1 << 8); (void)HAL_GPIO_LED_mden; } 
+static inline void HAL_GPIO_LED_mddis(void) { PIOC->PIO_MDDR = (1 << 8); (void)HAL_GPIO_LED_mddis; }
+
+static inline void HAL_GPIO_BUTTON_set(void) { PIOA->PIO_SODR = (1 << 11); (void)HAL_GPIO_BUTTON_set; } 
+static inline void HAL_GPIO_BUTTON_clr(void) { PIOA->PIO_CODR = (1 << 11); (void)HAL_GPIO_BUTTON_clr; } 
+static inline void HAL_GPIO_BUTTON_toggle(void) { if (PIOA->PIO_ODSR & (1 << 11)) PIOA->PIO_CODR = (1 << 11); else PIOA->PIO_SODR = (1 << 11); (void)HAL_GPIO_BUTTON_toggle; } 
+static inline void HAL_GPIO_BUTTON_write(int value) { if (value) PIOA->PIO_SODR = (1 << 11); else PIOA->PIO_CODR = (1 << 11); (void)HAL_GPIO_BUTTON_write; } 
+static inline void HAL_GPIO_BUTTON_in(void) { PIOA->PIO_PER = (1 << 11); PIOA->PIO_ODR = (1 << 11); (void)HAL_GPIO_BUTTON_in; } 
+static inline void HAL_GPIO_BUTTON_out(void) { PIOA->PIO_PER = (1 << 11); PIOA->PIO_OER = (1 << 11); (void)HAL_GPIO_BUTTON_out; } 
+static inline void HAL_GPIO_BUTTON_pullup(void) { PIOA->PIO_PUER = (1 << 11); (void)HAL_GPIO_BUTTON_pullup; } 
+static inline int HAL_GPIO_BUTTON_read(void) { return (PIOA->PIO_PDSR & (1 << 11)) != 0; (void)HAL_GPIO_BUTTON_read; } 
+static inline int HAL_GPIO_BUTTON_state(void) { return (PIOA->PIO_ODSR & (1 << 11)) != 0; (void)HAL_GPIO_BUTTON_state; } 
+static inline void HAL_GPIO_BUTTON_abcd(int abcd) { if (abcd & 1) PIOA->PIO_ABCDSR[0] |= (1 << 11); else PIOA->PIO_ABCDSR[0] &= ~(1 << 11); if (abcd & 2) PIOA->PIO_ABCDSR[1] |= (1 << 11); else PIOA->PIO_ABCDSR[1] &= ~(1 << 11); PIOA->PIO_PDR = (1 << 11); (void)HAL_GPIO_BUTTON_abcd; } 
+static inline void HAL_GPIO_BUTTON_mden(void) { PIOA->PIO_MDER = (1 << 11); (void)HAL_GPIO_BUTTON_mden; } 
+static inline void HAL_GPIO_BUTTON_mddis(void) { PIOA->PIO_MDDR = (1 << 11); (void)HAL_GPIO_BUTTON_mddis; }
